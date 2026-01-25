@@ -195,25 +195,31 @@ export default function Dashboard({ accounts, transactions, currencies, expenseP
   const planProgress = useMemo(() => {
     if (!expensePlan || expensePlan <= 0) return null;
 
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const daysPassed = now.getDate();
-    const daysRemaining = daysInMonth - daysPassed;
+    try {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const daysPassed = now.getDate();
+      const daysRemaining = daysInMonth - daysPassed;
 
-    const progress = (monthStats.expenses / expensePlan) * 100;
-    const remaining = expensePlan - monthStats.expenses;
-    const dailyNorm = remaining > 0 && daysRemaining > 0 ? remaining / daysRemaining : 0;
+      const expenses = monthStats?.expenses || 0;
+      const progress = expensePlan > 0 ? (expenses / expensePlan) * 100 : 0;
+      const remaining = expensePlan - expenses;
+      const dailyNorm = remaining > 0 && daysRemaining > 0 ? remaining / daysRemaining : 0;
 
-    return {
-      progress: Math.min(progress, 100),
-      remaining,
-      dailyNorm,
-      daysRemaining,
-      daysInMonth,
-      daysPassed
-    };
-  }, [expensePlan, monthStats.expenses]);
+      return {
+        progress: Math.min(progress, 100),
+        remaining,
+        dailyNorm,
+        daysRemaining,
+        daysInMonth,
+        daysPassed
+      };
+    } catch (error) {
+      console.error('Error calculating plan progress:', error);
+      return null;
+    }
+  }, [expensePlan, monthStats]);
 
   const formatAmount = (amount) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -304,7 +310,7 @@ export default function Dashboard({ accounts, transactions, currencies, expenseP
 
 
         {/* Информация о плане расходов */}
-        {expensePlan > 0 && planProgress && (
+        {expensePlan > 0 && (
           <div style={{ 
             padding: '16px',
             background: '#2d2d2d',
@@ -332,7 +338,7 @@ export default function Dashboard({ accounts, transactions, currencies, expenseP
               </div>
               
               {/* Норма в день */}
-              {planProgress.daysRemaining > 0 && (
+              {planProgress && planProgress.daysRemaining > 0 && (
                 <>
                   <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>
                     Норма в день
@@ -353,17 +359,21 @@ export default function Dashboard({ accounts, transactions, currencies, expenseP
               )}
               
               {/* Осталось */}
-              <div style={{ 
-                fontSize: '14px', 
-                fontWeight: 600,
-                color: planProgress.remaining >= 0 ? '#4ade80' : '#ff6b6b',
-                marginBottom: '4px'
-              }}>
-                Осталось: {formatAmount(planProgress.remaining)}
-              </div>
-              <div style={{ fontSize: '11px', color: '#777', marginTop: '2px' }}>
-                {planProgress.daysPassed} из {planProgress.daysInMonth} дней
-              </div>
+              {planProgress && (
+                <>
+                  <div style={{ 
+                    fontSize: '14px', 
+                    fontWeight: 600,
+                    color: planProgress.remaining >= 0 ? '#4ade80' : '#ff6b6b',
+                    marginBottom: '4px'
+                  }}>
+                    Осталось: {formatAmount(planProgress.remaining)}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#777', marginTop: '2px' }}>
+                    {planProgress.daysPassed} из {planProgress.daysInMonth} дней
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
