@@ -48,6 +48,15 @@ body {
   padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
   z-index: 1000;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
+  transform: translateY(0);
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+/* Скрыть нижнее меню при фокусе на полях ввода (суммы и т.д.), чтобы не закрывало кнопку "Добавить" */
+.bottom-nav--hidden {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .nav-button {

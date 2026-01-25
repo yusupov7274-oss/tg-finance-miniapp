@@ -9,6 +9,7 @@ import Settings from './components/Settings';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [hideBottomNav, setHideBottomNav] = useState(false);
   const [accounts, setAccounts] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [currencies, setCurrencies] = useState([]);
@@ -17,6 +18,38 @@ function App() {
   const [balanceChecks, setBalanceChecks] = useState([]);
   const [expenseCategories, setExpenseCategories] = useState([]);
   const [incomeCategories, setIncomeCategories] = useState([]);
+
+  // Скрывать нижнюю навигацию при фокусе на поле ввода (чтобы не закрывала кнопку "Добавить")
+  useEffect(() => {
+    const focusableSelector = 'input, textarea, [contenteditable="true"]';
+    let showNavTimer = null;
+
+    const handleFocusIn = (e) => {
+      if (e.target.matches?.(focusableSelector)) {
+        if (showNavTimer) {
+          clearTimeout(showNavTimer);
+          showNavTimer = null;
+        }
+        setHideBottomNav(true);
+      }
+    };
+
+    const handleFocusOut = (e) => {
+      if (e.target.matches?.(focusableSelector)) {
+        const related = e.relatedTarget;
+        if (related?.matches?.(focusableSelector)) return;
+        showNavTimer = setTimeout(() => setHideBottomNav(false), 200);
+      }
+    };
+
+    document.addEventListener('focusin', handleFocusIn);
+    document.addEventListener('focusout', handleFocusOut);
+    return () => {
+      if (showNavTimer) clearTimeout(showNavTimer);
+      document.removeEventListener('focusin', handleFocusIn);
+      document.removeEventListener('focusout', handleFocusOut);
+    };
+  }, []);
 
   // Инициализация Telegram Web App
   useEffect(() => {
@@ -306,7 +339,7 @@ function App() {
         )}
       </div>
       
-      <nav className="bottom-nav">
+      <nav className={`bottom-nav ${hideBottomNav ? 'bottom-nav--hidden' : ''}`}>
         {tabs.map(tab => (
           <button
             key={tab.id}
