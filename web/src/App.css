@@ -59,6 +59,45 @@ body {
   pointer-events: none;
 }
 
+/* Кнопка "Добавить данные" над клавиатурой при вводе сумм (выше модалок) */
+.keyboard-add-btn {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 2100;
+  padding: 14px 20px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom, 14px));
+  background: #2481cc;
+  color: white;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.3);
+  transition: background 0.2s;
+  animation: keyboardAddBtnIn 0.25s ease;
+}
+
+.keyboard-add-btn:hover {
+  background: #1e6ba8;
+}
+
+.keyboard-add-btn:active {
+  background: #1a5f94;
+}
+
+@keyframes keyboardAddBtnIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .nav-button {
   flex: 1;
   display: flex;

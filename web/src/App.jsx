@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import './App.css';
 import Dashboard from './components/Dashboard';
 import Accounts from './components/Accounts';
@@ -10,6 +10,8 @@ import Settings from './components/Settings';
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [hideBottomNav, setHideBottomNav] = useState(false);
+  const [showKeyboardAddButton, setShowKeyboardAddButton] = useState(false);
+  const activeFormRef = useRef(null);
   const [accounts, setAccounts] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [currencies, setCurrencies] = useState([]);
@@ -19,9 +21,10 @@ function App() {
   const [expenseCategories, setExpenseCategories] = useState([]);
   const [incomeCategories, setIncomeCategories] = useState([]);
 
-  // Скрывать нижнюю навигацию при фокусе на поле ввода (чтобы не закрывала кнопку "Добавить")
+  // Скрывать нижнюю навигацию и показывать кнопку "Добавить данные" при фокусе на полях ввода
   useEffect(() => {
     const focusableSelector = 'input, textarea, [contenteditable="true"]';
+    const amountInputSelector = 'input[inputmode="decimal"], input[inputmode="numeric"], input[type="number"]';
     let showNavTimer = null;
 
     const handleFocusIn = (e) => {
@@ -31,6 +34,20 @@ function App() {
           showNavTimer = null;
         }
         setHideBottomNav(true);
+
+        if (e.target.matches?.(amountInputSelector)) {
+          const form = e.target.closest?.('form');
+          if (form) {
+            activeFormRef.current = form;
+            setShowKeyboardAddButton(true);
+          } else {
+            activeFormRef.current = null;
+            setShowKeyboardAddButton(false);
+          }
+        } else {
+          activeFormRef.current = null;
+          setShowKeyboardAddButton(false);
+        }
       }
     };
 
@@ -38,7 +55,11 @@ function App() {
       if (e.target.matches?.(focusableSelector)) {
         const related = e.relatedTarget;
         if (related?.matches?.(focusableSelector)) return;
-        showNavTimer = setTimeout(() => setHideBottomNav(false), 200);
+        showNavTimer = setTimeout(() => {
+          setHideBottomNav(false);
+          setShowKeyboardAddButton(false);
+          activeFormRef.current = null;
+        }, 200);
       }
     };
 
@@ -354,6 +375,19 @@ function App() {
           </button>
         ))}
       </nav>
+
+      {/* Кнопка "Добавить данные" над клавиатурой при вводе сумм */}
+      {showKeyboardAddButton && (
+        <button
+          type="button"
+          className="keyboard-add-btn"
+          onClick={() => {
+            activeFormRef.current?.requestSubmit?.();
+          }}
+        >
+          Добавить данные
+        </button>
+      )}
     </div>
   );
 }

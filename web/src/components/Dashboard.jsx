@@ -486,75 +486,73 @@ export default function Dashboard({ accounts, transactions, currencies, expenseP
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3 className="modal-title">План расходов на месяц</h3>
-              <button className="modal-close" onClick={() => setShowPlanModal(false)}>×</button>
+              <button type="button" className="modal-close" onClick={() => setShowPlanModal(false)}>×</button>
             </div>
             
-            <div className="form-group">
-              <label className="form-label">Сумма плана (RUB)</label>
-              <input
-                type="text"
-                inputMode="decimal"
-                className="form-input"
-                value={planInput || formatNumberInput(expensePlan)}
-                onChange={(e) => {
-                  const inputValue = e.target.value;
-                  // Разрешаем ввод только цифр, точки, запятой и пробелов
-                  if (/^[\d\s.,]*$/.test(inputValue) || inputValue === '') {
-                    // Убираем пробелы для парсинга, затем форматируем обратно
-                    const cleaned = inputValue.replace(/\s/g, '');
-                    if (cleaned === '' || cleaned === '.') {
-                      setPlanInput(cleaned);
-                    } else {
-                      const parsed = parseFloat(cleaned.replace(',', '.')) || 0;
-                      // Форматируем только если введено достаточно цифр или при завершении ввода
-                      if (cleaned.length > 3 || cleaned.includes('.') || cleaned.includes(',')) {
-                        setPlanInput(formatNumberInput(parsed));
-                      } else {
+            <form onSubmit={(e) => { e.preventDefault(); handleSavePlan(); }}>
+              <div className="form-group">
+                <label className="form-label">Сумма плана (RUB)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className="form-input"
+                  value={planInput || formatNumberInput(expensePlan)}
+                  onChange={(e) => {
+                    const inputValue = e.target.value;
+                    // Разрешаем ввод только цифр, точки, запятой и пробелов
+                    if (/^[\d\s.,]*$/.test(inputValue) || inputValue === '') {
+                      // Убираем пробелы для парсинга, затем форматируем обратно
+                      const cleaned = inputValue.replace(/\s/g, '');
+                      if (cleaned === '' || cleaned === '.') {
                         setPlanInput(cleaned);
+                      } else {
+                        const parsed = parseFloat(cleaned.replace(',', '.')) || 0;
+                        // Форматируем только если введено достаточно цифр или при завершении ввода
+                        if (cleaned.length > 3 || cleaned.includes('.') || cleaned.includes(',')) {
+                          setPlanInput(formatNumberInput(parsed));
+                        } else {
+                          setPlanInput(cleaned);
+                        }
                       }
                     }
-                  }
-                }}
-                onFocus={(e) => {
-                  if (expensePlan > 0) {
-                    setPlanInput(formatNumberInput(expensePlan));
-                    e.target.select();
-                  } else {
-                    setPlanInput('');
-                  }
-                }}
-                onBlur={(e) => {
-                  const parsed = parseFormattedNumber(planInput || expensePlan);
-                  if (parsed === 0) {
-                    setPlanInput('');
-                  } else {
-                    setPlanInput(formatNumberInput(parsed));
-                  }
-                }}
-                placeholder="0"
-                autoFocus
-              />
-              <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
-                Укажите максимальную сумму расходов на текущий месяц
+                  }}
+                  onFocus={(e) => {
+                    if (expensePlan > 0) {
+                      setPlanInput(formatNumberInput(expensePlan));
+                      e.target.select();
+                    } else {
+                      setPlanInput('');
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const parsed = parseFormattedNumber(planInput || expensePlan);
+                    if (parsed === 0) {
+                      setPlanInput('');
+                    } else {
+                      setPlanInput(formatNumberInput(parsed));
+                    }
+                  }}
+                  placeholder="0"
+                  autoFocus
+                />
+                <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                  Укажите максимальную сумму расходов на текущий месяц
+                </div>
               </div>
-            </div>
 
-            <div className="modal-actions">
-              <button 
-                type="button" 
-                className="btn btn-secondary" 
-                onClick={() => setShowPlanModal(false)}
-              >
-                Отмена
-              </button>
-              <button 
-                type="button" 
-                className="btn btn-primary" 
-                onClick={handleSavePlan}
-              >
-                Сохранить
-              </button>
-            </div>
+              <div className="modal-actions">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => setShowPlanModal(false)}
+                >
+                  Отмена
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Сохранить
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
