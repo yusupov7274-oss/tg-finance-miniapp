@@ -51,6 +51,7 @@ export async function loadFromServer() {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
         'x-telegram-init-data': initData,
       },
       signal: controller.signal,
@@ -99,6 +100,7 @@ export async function saveToServer(data) {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
         'x-telegram-init-data': initData,
       },
       body: JSON.stringify(data),

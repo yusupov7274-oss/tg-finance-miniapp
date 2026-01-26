@@ -115,13 +115,22 @@ serve(async (req) => {
 
   try {
     // Получаем переменные окружения Supabase
-    // Если не доступны, используем значения напрямую
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://zhchkxukgltknfbropqu.supabase.co";
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "sb_publishable_m96BQEXNJw5_L_CI0kQkUg_0vdPodFS";
     
-    // Создаем клиент Supabase
-    // Используем anon key для создания клиента (не требует JWT)
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+    // Используем service_role key для создания клиента (обходит RLS и не требует JWT)
+    // service_role key должен быть добавлен как секрет SUPABASE_SERVICE_ROLE_KEY
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || 
+                          Deno.env.get("SUPABASE_ANON_KEY") || 
+                          "sb_publishable_m96BQEXNJw5_L_CI0kQkUg_0vdPodFS";
+    
+    // Создаем клиент Supabase с service_role key
+    // Это позволяет обойти RLS и работать напрямую с базой данных
+    const supabaseClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
 
     // Получаем initData из заголовка
     const initData = req.headers.get("x-telegram-init-data");
