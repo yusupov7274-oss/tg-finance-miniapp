@@ -114,8 +114,28 @@ function App() {
     ];
     const defaultIncomeCategories = ['Зарплата', 'Подарки', 'Инвестиции', 'Другое'];
 
+    // Общий таймаут: гарантируем, что UI покажется максимум через 10 секунд
+    const overallTimeout = setTimeout(() => {
+      if (!cancelled) {
+        console.warn('Load timeout reached, showing UI with defaults');
+        setStorageReady(true);
+      }
+    }, 10000);
+
     (async () => {
-      const data = await loadAllFromCloud();
+      let data = null;
+      try {
+        // Таймаут 5 секунд для загрузки данных
+        const loadPromise = loadAllFromCloud();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Load timeout')), 5000)
+        );
+        data = await Promise.race([loadPromise, timeoutPromise]);
+      } catch (error) {
+        console.warn('Failed to load data, using defaults:', error.message || error);
+        // Продолжаем с пустыми данными, загрузим из localStorage
+        data = {};
+      }
       if (cancelled) return;
 
       const raw = data || {};
@@ -171,22 +191,41 @@ function App() {
         setItem('income_categories', defaultIncomeCategories);
       }
 
+      // Пытаемся синхронизировать с сервером (не блокируем UI)
       if (isCloudAvailable()) {
-        await saveAllToCloud({
-          accounts: acc,
-          transactions: tr,
-          currencies: cur,
-          expense_plan: plan,
-          closed_months: closed,
-          balance_checks: checks,
-          expense_categories: expCat,
-          income_categories: incCat
-        });
+        try {
+          // Таймаут 3 секунды для синхронизации
+          const syncPromise = saveAllToCloud({
+            accounts: acc,
+            transactions: tr,
+            currencies: cur,
+            expense_plan: plan,
+            closed_months: closed,
+            balance_checks: checks,
+            expense_categories: expCat,
+            income_categories: incCat
+          });
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Sync timeout')), 3000)
+          );
+          await Promise.race([syncPromise, timeoutPromise]);
+        } catch (e) {
+          console.warn('Background sync failed (non-critical):', e.message || e);
+          // Игнорируем ошибку, данные уже в localStorage
+        }
       }
-      if (!cancelled) setStorageReady(true);
+      
+      // Всегда показываем UI, даже если синхронизация не удалась
+      if (!cancelled) {
+        clearTimeout(overallTimeout);
+        setStorageReady(true);
+      }
     })();
 
-    return () => { cancelled = true; };
+    return () => { 
+      cancelled = true;
+      clearTimeout(overallTimeout);
+    };
   }, []);
 
   // Сохранение данных: localStorage + облако (Mini App) для синхронизации между устройствами

@@ -221,7 +221,14 @@ export async function loadAllFromCloud() {
   // Пытаемся загрузить с Supabase (если доступен)
   if (api.isApiAvailable() && api.isTelegramMiniApp()) {
     try {
-      const serverData = await api.loadFromServer();
+      // Таймаут для загрузки с сервера (5 секунд)
+      const serverDataPromise = api.loadFromServer();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Server timeout')), 5000)
+      );
+      
+      const serverData = await Promise.race([serverDataPromise, timeoutPromise]);
+      
       if (serverData) {
         // Обновляем localStorage из сервера
         for (const key of keys) {
@@ -235,16 +242,25 @@ export async function loadAllFromCloud() {
         return serverData;
       }
     } catch (e) {
-      console.warn('Failed to load from server, using local cache:', e);
+      console.warn('Failed to load from server, using local cache:', e.message || e);
       // Продолжаем с localStorage/Cloud Storage
     }
   }
 
-  // Fallback: загружаем из localStorage или Cloud Storage
+  // Fallback: загружаем из localStorage или Cloud Storage (с таймаутом)
   const result = {};
   for (const key of keys) {
-    const v = await getItem(key);
-    result[key] = v;
+    try {
+      const getItemPromise = getItem(key);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('getItem timeout')), 2000)
+      );
+      const v = await Promise.race([getItemPromise, timeoutPromise]);
+      result[key] = v;
+    } catch (e) {
+      console.warn(`Failed to load ${key}, using null:`, e.message || e);
+      result[key] = null;
+    }
   }
 
   return result;

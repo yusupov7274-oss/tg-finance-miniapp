@@ -42,6 +42,10 @@ export async function loadFromServer() {
   }
 
   try {
+    // Таймаут 10 секунд, чтобы не зависать
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
     const response = await fetch(`${SUPABASE_URL}/functions/v1/sync`, {
       method: 'GET',
       headers: {
@@ -49,7 +53,10 @@ export async function loadFromServer() {
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'x-telegram-init-data': initData,
       },
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Unknown error' }));
