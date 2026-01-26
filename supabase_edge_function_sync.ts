@@ -114,15 +114,19 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
+    // Получаем переменные окружения Supabase (автоматически доступны в Edge Functions)
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    
+    // Создаем клиент Supabase с правильной авторизацией
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: req.headers.get("Authorization") || `Bearer ${supabaseAnonKey}`,
+          apikey: supabaseAnonKey,
         },
-      }
-    );
+      },
+    });
 
     // Получаем initData из заголовка
     const initData = req.headers.get("x-telegram-init-data");
