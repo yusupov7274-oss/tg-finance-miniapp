@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import './App.css';
+import { setItem, loadAllFromCloud, saveAllToCloud, isCloudAvailable } from './lib/storage';
 import Dashboard from './components/Dashboard';
 import Accounts from './components/Accounts';
 import Transactions from './components/Transactions';
@@ -20,6 +21,7 @@ function App() {
   const [balanceChecks, setBalanceChecks] = useState([]);
   const [expenseCategories, setExpenseCategories] = useState([]);
   const [incomeCategories, setIncomeCategories] = useState([]);
+  const [storageReady, setStorageReady] = useState(false);
 
   // Скрывать нижнюю навигацию и показывать кнопку "Добавить данные" при фокусе на полях ввода
   useEffect(() => {
@@ -93,140 +95,139 @@ function App() {
     }
   }, []);
 
-  // Загрузка данных из localStorage
+  // Загрузка данных: облако (Mini App) → localStorage, с миграцией и дефолтами
   useEffect(() => {
-    const savedAccounts = localStorage.getItem('finance_accounts');
-    const savedTransactions = localStorage.getItem('finance_transactions');
-    const savedCurrencies = localStorage.getItem('finance_currencies');
-    const savedExpensePlan = localStorage.getItem('finance_expense_plan');
+    let cancelled = false;
 
-    if (savedAccounts) {
-      setAccounts(JSON.parse(savedAccounts));
-    } else {
-      // Начальные данные
-      const defaultAccounts = [
-        { id: 1, name: 'Основной счет', currency: 'RUB', balance: 0, color: '#2481cc' }
-      ];
-      setAccounts(defaultAccounts);
-      localStorage.setItem('finance_accounts', JSON.stringify(defaultAccounts));
-    }
+    const defaultAccounts = [
+      { id: 1, name: 'Основной счет', currency: 'RUB', balance: 0, color: '#2481cc' }
+    ];
+    const defaultCurrencies = [
+      { code: 'RUB', name: 'Российский рубль', rate: 1, source: 'manual' },
+      { code: 'USD', name: 'Доллар США', rate: 100, source: 'manual' },
+      { code: 'EUR', name: 'Евро', rate: 110, source: 'manual' },
+      { code: 'KZT', name: 'Казахстанский тенге', rate: 0.15, source: 'manual' }
+    ];
+    const defaultExpenseCategories = [
+      'Продукты', 'Транспорт', 'Жилье', 'Развлечения',
+      'Здоровье', 'Образование', 'Одежда', 'Подарки', 'Другое'
+    ];
+    const defaultIncomeCategories = ['Зарплата', 'Подарки', 'Инвестиции', 'Другое'];
 
-    if (savedTransactions) {
-      setTransactions(JSON.parse(savedTransactions));
-    } else {
-      setTransactions([]);
-      localStorage.setItem('finance_transactions', JSON.stringify([]));
-    }
+    (async () => {
+      const data = await loadAllFromCloud();
+      if (cancelled) return;
 
-    if (savedCurrencies) {
-      const currencies = JSON.parse(savedCurrencies);
-      // Проверяем, есть ли тенге в сохраненных валютах
-      const hasKZT = currencies.some(c => c.code === 'KZT');
-      if (!hasKZT) {
-        // Добавляем тенге, если его нет (примерный курс, можно обновить через API)
-        currencies.push({ code: 'KZT', name: 'Казахстанский тенге', rate: 0.15, source: 'manual' });
-        localStorage.setItem('finance_currencies', JSON.stringify(currencies));
+      const raw = data || {};
+
+      let acc = Array.isArray(raw.accounts) && raw.accounts.length ? raw.accounts : defaultAccounts;
+      setAccounts(acc);
+      if (!Array.isArray(raw.accounts) || !raw.accounts.length) {
+        setItem('accounts', acc);
       }
-      setCurrencies(currencies);
-    } else {
-      // Начальные валюты с курсами
-      // Примечание: курсы примерные, можно обновить через API кнопкой "🔄 Обновить все"
-      const defaultCurrencies = [
-        { code: 'RUB', name: 'Российский рубль', rate: 1, source: 'manual' },
-        { code: 'USD', name: 'Доллар США', rate: 100, source: 'manual' },
-        { code: 'EUR', name: 'Евро', rate: 110, source: 'manual' },
-        { code: 'KZT', name: 'Казахстанский тенге', rate: 0.15, source: 'manual' }
-      ];
-      setCurrencies(defaultCurrencies);
-      localStorage.setItem('finance_currencies', JSON.stringify(defaultCurrencies));
-    }
 
-    if (savedExpensePlan) {
-      setExpensePlan(parseFloat(savedExpensePlan));
-    } else {
-      setExpensePlan(0);
-      localStorage.setItem('finance_expense_plan', '0');
-    }
+      let tr = Array.isArray(raw.transactions) ? raw.transactions : [];
+      setTransactions(tr);
+      if (!Array.isArray(raw.transactions)) setItem('transactions', []);
 
-    const savedClosedMonths = localStorage.getItem('finance_closed_months');
-    if (savedClosedMonths) {
-      setClosedMonths(JSON.parse(savedClosedMonths));
-    } else {
-      setClosedMonths([]);
-      localStorage.setItem('finance_closed_months', JSON.stringify([]));
-    }
+      let cur = Array.isArray(raw.currencies) && raw.currencies.length ? raw.currencies : defaultCurrencies;
+      const hasKZT = cur.some(c => c.code === 'KZT');
+      if (!hasKZT) {
+        cur = [...cur, { code: 'KZT', name: 'Казахстанский тенге', rate: 0.15, source: 'manual' }];
+        setItem('currencies', cur);
+      }
+      setCurrencies(cur);
+      if (!Array.isArray(raw.currencies) || !raw.currencies.length) {
+        setItem('currencies', cur);
+      }
 
-    const savedBalanceChecks = localStorage.getItem('finance_balance_checks');
-    if (savedBalanceChecks) {
-      setBalanceChecks(JSON.parse(savedBalanceChecks));
-    } else {
-      setBalanceChecks([]);
-      localStorage.setItem('finance_balance_checks', JSON.stringify([]));
-    }
+      const plan = typeof raw.expense_plan === 'number' && raw.expense_plan >= 0
+        ? raw.expense_plan
+        : (typeof raw.expense_plan === 'string' ? parseFloat(raw.expense_plan) : 0) || 0;
+      setExpensePlan(plan);
+      if (raw.expense_plan == null) setItem('expense_plan', 0);
 
-    const savedExpenseCategories = localStorage.getItem('finance_expense_categories');
-    if (savedExpenseCategories) {
-      setExpenseCategories(JSON.parse(savedExpenseCategories));
-    } else {
-      const defaultExpenseCategories = [
-        'Продукты', 'Транспорт', 'Жилье', 'Развлечения',
-        'Здоровье', 'Образование', 'Одежда', 'Подарки', 'Другое'
-      ];
-      setExpenseCategories(defaultExpenseCategories);
-      localStorage.setItem('finance_expense_categories', JSON.stringify(defaultExpenseCategories));
-    }
+      let closed = Array.isArray(raw.closed_months) ? raw.closed_months : [];
+      setClosedMonths(closed);
+      if (!Array.isArray(raw.closed_months)) setItem('closed_months', []);
 
-    const savedIncomeCategories = localStorage.getItem('finance_income_categories');
-    if (savedIncomeCategories) {
-      setIncomeCategories(JSON.parse(savedIncomeCategories));
-    } else {
-      const defaultIncomeCategories = [
-        'Зарплата', 'Подарки', 'Инвестиции', 'Другое'
-      ];
-      setIncomeCategories(defaultIncomeCategories);
-      localStorage.setItem('finance_income_categories', JSON.stringify(defaultIncomeCategories));
-    }
+      let checks = Array.isArray(raw.balance_checks) ? raw.balance_checks : [];
+      setBalanceChecks(checks);
+      if (!Array.isArray(raw.balance_checks)) setItem('balance_checks', []);
+
+      let expCat = Array.isArray(raw.expense_categories) && raw.expense_categories.length
+        ? raw.expense_categories
+        : defaultExpenseCategories;
+      setExpenseCategories(expCat);
+      if (!Array.isArray(raw.expense_categories) || !raw.expense_categories.length) {
+        setItem('expense_categories', defaultExpenseCategories);
+      }
+
+      let incCat = Array.isArray(raw.income_categories) && raw.income_categories.length
+        ? raw.income_categories
+        : defaultIncomeCategories;
+      setIncomeCategories(incCat);
+      if (!Array.isArray(raw.income_categories) || !raw.income_categories.length) {
+        setItem('income_categories', defaultIncomeCategories);
+      }
+
+      if (isCloudAvailable()) {
+        await saveAllToCloud({
+          accounts: acc,
+          transactions: tr,
+          currencies: cur,
+          expense_plan: plan,
+          closed_months: closed,
+          balance_checks: checks,
+          expense_categories: expCat,
+          income_categories: incCat
+        });
+      }
+      if (!cancelled) setStorageReady(true);
+    })();
+
+    return () => { cancelled = true; };
   }, []);
 
-  // Сохранение данных в localStorage
+  // Сохранение данных: localStorage + облако (Mini App) для синхронизации между устройствами
   const saveAccounts = (newAccounts) => {
     setAccounts(newAccounts);
-    localStorage.setItem('finance_accounts', JSON.stringify(newAccounts));
+    setItem('accounts', newAccounts);
   };
 
   const saveTransactions = (newTransactions) => {
     setTransactions(newTransactions);
-    localStorage.setItem('finance_transactions', JSON.stringify(newTransactions));
+    setItem('transactions', newTransactions);
   };
 
   const saveCurrencies = (newCurrencies) => {
     setCurrencies(newCurrencies);
-    localStorage.setItem('finance_currencies', JSON.stringify(newCurrencies));
+    setItem('currencies', newCurrencies);
   };
 
   const saveExpensePlan = (plan) => {
     setExpensePlan(plan);
-    localStorage.setItem('finance_expense_plan', plan.toString());
+    setItem('expense_plan', typeof plan === 'number' ? plan : parseFloat(plan) || 0);
   };
 
   const saveClosedMonths = (months) => {
     setClosedMonths(months);
-    localStorage.setItem('finance_closed_months', JSON.stringify(months));
+    setItem('closed_months', months);
   };
 
   const saveBalanceChecks = (checks) => {
     setBalanceChecks(checks);
-    localStorage.setItem('finance_balance_checks', JSON.stringify(checks));
+    setItem('balance_checks', checks);
   };
 
   const saveExpenseCategories = (categories) => {
     setExpenseCategories(categories);
-    localStorage.setItem('finance_expense_categories', JSON.stringify(categories));
+    setItem('expense_categories', categories);
   };
 
   const saveIncomeCategories = (categories) => {
     setIncomeCategories(categories);
-    localStorage.setItem('finance_income_categories', JSON.stringify(categories));
+    setItem('income_categories', categories);
   };
 
   // Проверяем незакрытые месяцы для бейджа
@@ -292,6 +293,14 @@ function App() {
     { id: 'closure', label: 'Закрытие', icon: '🔒', badge: unclosedMonthsCount },
     { id: 'settings', label: 'Настройки', icon: '⚙️' }
   ];
+
+  if (!storageReady) {
+    return (
+      <div className="app" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <div style={{ color: '#999', fontSize: '16px' }}>Загрузка…</div>
+      </div>
+    );
+  }
 
   return (
     <div className="app">

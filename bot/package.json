@@ -6,6 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
+    "get-channel-id": "node get-channel-id.js",
+    "get-id": "node get-channel-id-simple.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
