@@ -1,8 +1,18 @@
 import "dotenv/config";
 import TelegramBot from "node-telegram-bot-api";
 
-const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 const webAppUrl = process.env.WEBAPP_URL;
+
+// Настройка бота с опциональным прокси
+const botOptions = { 
+  polling: true,
+  // Если нужен прокси, раскомментируйте и установите socks-proxy-agent:
+  // request: {
+  //   agent: new (await import('socks-proxy-agent')).SocksProxyAgent(process.env.PROXY_URL)
+  // }
+};
+
+const bot = new TelegramBot(process.env.BOT_TOKEN, botOptions);
 
 // Проверка переменных окружения
 if (!process.env.BOT_TOKEN) {
