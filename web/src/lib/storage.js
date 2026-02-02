@@ -20,7 +20,12 @@ let syncInProgress = false;
 let syncQueue = new Set();
 
 function hasCloudStorage() {
-  return typeof window !== 'undefined' && window.Telegram?.WebApp?.CloudStorage;
+  return (
+    typeof window !== 'undefined' &&
+    window.Telegram?.WebApp?.CloudStorage &&
+    typeof window.Telegram.WebApp.CloudStorage.setItem === 'function' &&
+    typeof window.Telegram.WebApp.CloudStorage.getItem === 'function'
+  );
 }
 
 function cloudSetItem(key, value) {
