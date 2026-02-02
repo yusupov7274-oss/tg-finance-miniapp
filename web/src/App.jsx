@@ -93,13 +93,6 @@ function App() {
       document.documentElement.style.setProperty('--safe-area-inset-top', `${safeAreaInsets.top}px`);
       document.documentElement.style.setProperty('--safe-area-inset-bottom', `${safeAreaInsets.bottom}px`);
     }
-    
-    // Временная отладка: выводим переменные окружения в консоль
-    console.log('🔍 Debug: Environment variables');
-    console.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL || 'НЕ УСТАНОВЛЕН');
-    console.log('VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY ? import.meta.env.VITE_SUPABASE_ANON_KEY.substring(0, 20) + '...' : 'НЕ УСТАНОВЛЕН');
-    console.log('Telegram WebApp:', window.Telegram?.WebApp ? 'Доступен ✅' : 'Недоступен ❌');
-    console.log('InitData:', window.Telegram?.WebApp?.initData ? 'Есть ✅' : 'Нет ❌');
   }, []);
 
   // Загрузка данных: сначала быстро из localStorage, потом синхронизация с сервером
