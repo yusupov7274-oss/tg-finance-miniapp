@@ -22,6 +22,48 @@ function App() {
   const [expenseCategories, setExpenseCategories] = useState([]);
   const [incomeCategories, setIncomeCategories] = useState([]);
   const [storageReady, setStorageReady] = useState(false);
+  const [authStatus, setAuthStatus] = useState(null);
+  const [authLoading, setAuthLoading] = useState(false);
+
+  const handleAuth = async () => {
+    setAuthLoading(true);
+    setAuthStatus(null);
+    try {
+      const initData = window.Telegram?.WebApp?.initData;
+      if (!initData || typeof initData !== 'string' || !initData.trim()) {
+        setAuthStatus('no-telegram');
+        return;
+      }
+      const apiUrl = import.meta.env.VITE_API_URL || '';
+      if (!apiUrl) {
+        setAuthStatus({ ok: false, error: 'VITE_API_URL не задан', status: 0 });
+        return;
+      }
+      const res = await fetch(`${apiUrl}/auth/telegram`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok && data.user) {
+        setAuthStatus({ ok: true, user: data.user });
+      } else {
+        setAuthStatus({
+          ok: false,
+          error: data.error || res.statusText || 'Ошибка запроса',
+          status: res.status,
+        });
+      }
+    } catch (err) {
+      setAuthStatus({
+        ok: false,
+        error: err.message || 'Сетевая ошибка',
+        status: 0,
+      });
+    } finally {
+      setAuthLoading(false);
+    }
+  };
 
   // Скрывать нижнюю навигацию и показывать кнопку "Добавить данные" при фокусе на полях ввода
   useEffect(() => {
@@ -359,6 +401,29 @@ function App() {
   return (
     <div className="app">
       <div className="app-content">
+        <div className="auth-block" style={{ marginBottom: '12px', padding: '10px 12px', background: 'var(--bg-secondary, #1e1e1e)', borderRadius: '8px', fontSize: '14px' }}>
+          <button
+            type="button"
+            onClick={handleAuth}
+            disabled={authLoading}
+            style={{ padding: '8px 16px', marginRight: '8px', borderRadius: '6px', border: 'none', background: 'var(--accent, #2481cc)', color: '#fff', cursor: authLoading ? 'wait' : 'pointer', fontWeight: 500 }}
+          >
+            {authLoading ? 'Загрузка…' : 'Войти'}
+          </button>
+          {authStatus === 'no-telegram' && (
+            <span style={{ color: '#b0b0b0' }}>Откройте мини-апку внутри Telegram</span>
+          )}
+          {authStatus?.ok === true && authStatus.user && (
+            <span style={{ color: '#7cb342' }}>
+              ✅ Авторизовано: {[authStatus.user.first_name, authStatus.user.username].filter(Boolean).join(' ') || '—'} (tg_user_id: {authStatus.user.tg_user_id})
+            </span>
+          )}
+          {authStatus && authStatus.ok === false && (
+            <span style={{ color: '#f44336' }}>
+              ❌ Ошибка: {authStatus.error}{authStatus.status ? ` (${authStatus.status})` : ''}
+            </span>
+          )}
+        </div>
         {activeTab === 'dashboard' && (
           <Dashboard 
             accounts={accounts}
