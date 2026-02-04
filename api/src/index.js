@@ -48,6 +48,15 @@ app.get('/health', (_req, res) => {
   });
 });
 
+app.get('/db/health', async (_req, res) => {
+  try {
+    await pool.query('select 1 as ok');
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message ?? String(err) });
+  }
+});
+
 function validateTelegramInitData(initData) {
   if (!initData || typeof initData !== 'string' || !initData.trim()) {
     return { valid: false, reason: 'missing' };
