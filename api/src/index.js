@@ -53,7 +53,7 @@ app.get('/db/health', async (_req, res) => {
     await pool.query('select 1 as ok');
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err?.message ?? String(err) });
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
